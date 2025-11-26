@@ -4,8 +4,17 @@ import scipy
 z0 = 10
 v0 = 0
 theta0 = 0
-z_star = 10
-theta_c = 0
+r = 12e-3
+h = 2e-3
+
+def theta_c_func(r, h):
+    return np.arctan(h / (2*r))
+
+def z_star_func(r, h):
+    return sqrt(r**2 + (h/2)**2)
+
+theta_c = theta_c_func(r, h)
+z_star = z_star_func(r, h)
 
 dt = 1e-3
 
