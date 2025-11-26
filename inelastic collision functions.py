@@ -30,7 +30,8 @@ def wAfter(v, w, r, h, m , theta, gamma, z_star, theta_c):
 
 # sample:
 
-vv = vAfter(0.5, 0.5, 12e-3, 2e-3, 7e-3, 0.9, np.pi/3, np.sqrt((12e-3)**2 + (1e-3)**2), np.arctan(2e-3 / (2*12e-3)))
+vv = vAfter(0.5, 0.5, 12e-3, 2e-3, 7e-3, np.pi/3, 0.9, np.sqrt((12e-3)**2 + (1e-3)**2), np.arctan(2e-3 / (2*12e-3)))
+
 
 
 
