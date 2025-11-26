@@ -35,4 +35,5 @@ def wAfter(v, w, r, h, m , gamma, z_star):
 
 # sample:
 
-vv = vAfter([0, 0, 0.5], 0.5, 12e-3, 2e-3, 7e-3 , 0.3, np.sqrt((12e-3)**2 + (1e-3)**2))
+vv = vAfter(0.5, 12e-3, 2e-3, 7e-3 , 0.3, np.sqrt((12e-3)**2 + (1e-3)**2))
+
