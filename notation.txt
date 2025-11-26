@@ -1,0 +1,33 @@
+g acceleration due to gravity - CONSTANT approx 9.81 ms^(-2)
+gamma = restitution coefficient - CONSTANT
+
+z0 initial height of cm
+v0 initial velocity of coin
+theta0 initial angle of coin
+w0 initial angular velocity of coin - CONSTANT
+
+m mass of coin
+r radius of coin
+h width of coin
+theta angle of the coin with vertical
+
+z_star semidiagonal, z_star(r, h) = sqrt(r^2 + (h/2)^2)
+theta_c critical angle, theta_c(r, h) = arctan(h / (2r))
+
+z_min = height of cm when one corner of the coin in in contact with the floor, 
+z_min(theta) = z_star * cos(|theta| - theta_c)
+
+DURING COLLISIONS:
+v’ velocity before collision
+v’’ velocity after collision
+w’ angular velocity before collision
+w’’ angular velocity after collision
+
+v’’ = v’’(v’, w’, theta)
+w’’ = w’’(v’, w’, theta)
+
+z_j1,j2(t) = z(t) + j2 z_star * cos(alpha), 
+alpha = theta_c + j1 j2 theta(t)
+-solve z_j1,j2(t) = 0 to find t for each i,j = +- 1
+
+I moment of inertia
