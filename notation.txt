@@ -18,13 +18,13 @@ z_min = height of cm when one corner of the coin in in contact with the floor,
 z_min(theta) = z_star * cos(|theta| - theta_c)
 
 DURING COLLISIONS:
-v’ velocity before collision
-v’’ velocity after collision
-w’ angular velocity before collision
-w’’ angular velocity after collision
+v velocity before collision
+vv velocity after collision
+w angular velocity before collision
+www angular velocity after collision
 
-v’’ = v’’(v’, w’, theta)
-w’’ = w’’(v’, w’, theta)
+vv = vv(v, w, theta)
+ww = ww(v, w, theta)
 
 z_j1,j2(t) = z(t) + j2 z_star * cos(alpha), 
 alpha = theta_c + j1 j2 theta(t)
