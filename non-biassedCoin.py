@@ -5,7 +5,7 @@ z0 = 10
 v0 = 0
 theta0 = 0
 z_star = 10
-crit_angl = 0
+theta_c = 0
 
 dt = 1e-3
 
@@ -26,7 +26,7 @@ def z_corner(j1, j2, t, alpha, w):
 
 
 def alpha(j1, j2, t, w):
-    return crit_angl + j1*j2*theta(t, w)
+    return theta_c + j1*j2*theta(t, w)
 
 def theta(t, w):
     return theta0 + w*t
