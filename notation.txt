@@ -31,3 +31,8 @@ alpha = theta_c + j1 j2 theta(t)
 -solve z_j1,j2(t) = 0 to find t for each i,j = +- 1
 
 I moment of inertia
+
+
+
+For the plotting for the presentation choose one that doesn't have too many collisions or at least it doesn't have the situation
+where we have a lot of quick collisions near the critical energy point.
