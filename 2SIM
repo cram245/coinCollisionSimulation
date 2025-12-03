@@ -1,0 +1,889 @@
+'''
+# FUNCTIONS #################################################################################################################################################################
+'''
+import numpy as np
+import scipy
+import matplotlib.pyplot as plt
+import math
+
+# ==========================================
+# 1. GLOBAL CONFIGURATION & CONSTANTS
+# ==========================================
+
+# Math Aliases for cleaner code
+cos = np.cos
+sin = np.sin
+
+# Physics Constants
+g = 9.8           # Gravitational acceleration (m/s^2)
+
+# Coin Geometry (Cylinder)
+r = 0.011
+h = 0.002
+z_star = np.sqrt(r**2 + (h/2)**2)
+theta_c = np.arctan(h / (2 * r))
+
+# Material Properties (for collisions)
+gamma = 0.5       # Coefficient of restitution
+m = 0.005         # Mass
+
+# Moment of Inertia (Solid cylinder rotating around central diameter)
+I_moment = (m / 4) * r**2 + (m / 12) * h**2
+
+
+# ==========================================
+# 2. KINEMATICS (Equations of Motion)
+# ==========================================
+
+def z(t, z_0, v_0):
+    """
+    Calculates the vertical position of the Center of Mass (COM).
+    Equation: z(t) = z0 + v0*t - 0.5*g*t^2
+    """
+    return z_0 + v_0*t - 0.5*g*t**2
+
+def v_vel(t, v_0):
+    """
+    Calculates the vertical velocity of the COM.
+    Equation: v(t) = v0 - g*t
+    NOTE: Negative sign because 'g' is defined as positive 9.8.
+    """
+    return v_0 - g*t
+
+def norm_angle(angle):
+    # 1. Angle to [0, 2pi)
+    angle = angle % (2 * math.pi)
+
+    # 2. Angle to (-pi, pi)
+    if angle > math.pi:
+        angle -= 2 * math.pi
+
+    return angle
+
+def theta_ang(t, theta_0, w):
+    """
+    Calculates the angular orientation of the coin.
+    Equation: theta(t) = theta0 + w*t
+    """
+    theta_new = theta_0 + w*t
+    theta_norm = norm_angle(theta_new)
+    return theta_norm
+
+# ==========================================
+# 3. GEOMETRY (Corner Positions)
+# ==========================================
+
+def alpha(t, j1, j2, theta_0, w):
+    """
+    Calculates the instantaneous phase angle for a specific corner.
+
+    Parameters:
+    -----------
+    j1 : int (+1 or -1) -> Horizontal selector (Right/Left)
+    j2 : int (+1 or -1) -> Vertical selector (Top/Bottom)
+
+    Returns:
+    --------
+    float : The angle used inside the cosine/sine functions for position.
+    """
+    return theta_c + j1*j2*theta_ang(t, theta_0, w)
+
+def Z_j1j2(t, j1, j2, z_0, v_0, theta_0, w):
+    """
+    Calculates the exact vertical height (Z) of a specific corner.
+    Logic: Height of COM + Vertical projection of the corner radius.
+    """
+    return z(t, z_0, v_0) + j2 * z_star * cos(alpha(t, j1, j2, theta_0, w))
+
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+#-----------------------------------------------------------------------
+
+# ==========================================
+# 4. FIND WHEN THE Z REACHES Z*
+# ==========================================
+
+def falling_impact_study_time(z_0, v_0, direction):
+    """
+    ANALYTICAL SOLVER for Center of Mass height.
+    Finds the time 't' when the COM reaches the critical height 'z_star'.
+
+    Objective:
+    ----------
+    To determine if the coin has enough energy to reach the height where it is
+    safe from hitting the ground (z_star), or if it is trapped below.
+
+    Parameters:
+    -----------
+    direction : int
+        1 -> Search for time when passing z_star while going UP (Escape).
+        0 -> Search for time when passing z_star while going DOWN (Falling).
+
+    Returns:
+    --------
+    float or None : The smallest positive time 't', or None if unreachable.
+    """
+    # Quadratic coefficients for: -0.5*g*t^2 + v_0*t + (z_0 - z_star) = 0
+    a = -0.5 * g
+    b = v_0
+    c = z_0 - z_star
+
+    delta = b**2 - 4*a*c
+
+    if delta < 0:
+        return None # Coin apex is lower than z_star
+
+    sqrt_delta = np.sqrt(delta)
+    t1 = (-b - sqrt_delta) / (2*a)
+    t2 = (-b + sqrt_delta) / (2*a)
+
+    candidates = [t1, t2]
+
+    # Find the first valid time matching the direction criteria
+    for t in candidates:
+        if t > 1e-9: # Only future events
+            current_vel = v_vel(t, v_0)
+            if direction == 1 and current_vel > 0:
+                return t
+            elif direction == 0 and current_vel < 0:
+                return t
+
+    return None
+
+# ==========================================
+# 5. FIND WHICH CORNER COLLIDES AND THE TIME
+# ==========================================
+
+def solve_collision_time(j1, j2, t_study, z_0, v_0, theta_0, w, min_t=-1e-9):
+    """
+    NUMERICAL SOLVER (Taylor Expansion) for Corner Impact.
+    Approximates the time 'dt' until a specific corner hits Z=0.
+
+    Objective:
+    ----------
+    Because Z_j1j2(t) involves cos(t) and t^2, it cannot be solved analytically.
+    We use a 2nd-order Taylor expansion around t=0 (current state) to approximate
+    the trajectory as a parabola locally and find the root.
+
+    Returns:
+    --------
+    float or None : The time 'dt' relative to t_study, or None.
+    """
+    # 1. Evaluate state at t_study
+    z_com = z(t_study, z_0, v_0)
+    v_com = v_vel(t_study, v_0)
+    alpha_val = alpha(t_study, j1, j2, theta_0, w)
+
+    # 2. Taylor Coefficients (Z(tau) ≈ A*tau^2 + B*tau + C)
+    # C = Current Position
+    C_coeff = z_com + j2 * z_star * cos(alpha_val)
+
+    # B = Current Velocity (Linear + Rotational contribution)
+    B_coeff = v_com - (j1 * z_star * w * sin(alpha_val))
+
+    # A = Current Acceleration (Gravity + Centripetal) / 2
+    accel_total = -g - (j2 * z_star * (w**2) * cos(alpha_val))
+    A_coeff = 0.5 * accel_total
+
+    # 3. Solve Quadratic
+    delta = B_coeff**2 - 4*A_coeff*C_coeff
+    if delta < 0: return None
+
+    sqrt_delta = np.sqrt(delta)
+    tau1 = (-B_coeff - sqrt_delta) / (2*A_coeff)
+    tau2 = (-B_coeff + sqrt_delta) / (2*A_coeff)
+
+    # 4. Filter Results (absolute time must be > t_study)
+    times = []
+    for tau in [tau1, tau2]:
+        t_abs = t_study + tau
+        if t_abs > min_t:
+            times.append(t_abs)
+
+    if not times: return None
+    return min(times)
+
+
+def find_next_impact(t_study, z_0, v_0, theta_0, w, min_t=-1e-9):
+    """
+    MANAGER for Impact Detection.
+    Checks all 4 corners to see which one hits the floor first.
+
+    Returns:
+    --------
+    np.array : [j1, j2, absolute_time]
+    """
+    corners = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+    valid_impacts = []
+
+    for (j1, j2) in corners:
+        t_impact = solve_collision_time(j1, j2, t_study, z_0, v_0, theta_0, w, min_t)
+        if t_impact is not None:
+            valid_impacts.append([j1, j2, t_impact])
+
+    if not valid_impacts: return None
+
+    # Sort by time (smallest time is the first impact)
+    valid_impacts.sort(key=lambda x: x[2])
+    return np.array(valid_impacts[0])
+
+# ==========================================
+# 6. UPDATE VARIABLES (PRE-COLLISION)
+# ==========================================
+
+def update_state(z_curr, v_curr, theta_curr, w, dt):
+    """ Helper to advance physics state by dt """
+    z_new = z(dt, z_curr, v_curr)
+    v_new = v_vel(dt, v_curr)
+    theta_new = theta_ang(dt, theta_curr, w)
+    return z_new, v_new, theta_new
+
+
+# ==========================================
+# 7. LOOP FIND REAL EXACT COLLISION
+# ==========================================
+
+def simulate_until_impact(z_ini, v_ini, theta_ini, w_ini):
+    """
+    ITERATIVE LOOP to find exact impact time.
+
+    Objective:
+    ----------
+    Taylor expansion is only accurate locally. This function advances the simulation
+    step-by-step, recalculating the Taylor approximation as it gets closer to the floor,
+    until the error is negligible (< 0.1 microseconds).
+    """
+    curr_z = z_ini
+    curr_v = v_ini
+    curr_theta = theta_ini
+    total_time = 0.0
+
+    precision_limit = 1e-7
+    max_steps = 50
+
+    for i in range(max_steps):
+        # Search from t=0 (current state)
+        impact = find_next_impact(0, curr_z, curr_v, curr_theta, w_ini)
+
+        if impact is None: return None # No impact found
+
+        j1, j2, dt = impact
+
+        # Check convergence
+        if dt < precision_limit:
+            # Final update
+            curr_z, curr_v, curr_theta = update_state(curr_z, curr_v, curr_theta, w_ini, dt)
+            total_time += dt
+            return [int(j1), int(j2), total_time, curr_z, curr_v, curr_theta]
+
+        # Advance simulation
+        safe_dt = max(0, dt)
+        curr_z, curr_v, curr_theta = update_state(curr_z, curr_v, curr_theta, w_ini, safe_dt)
+        total_time += safe_dt
+
+    return None
+
+# ==========================================
+# 8. UPDATE VARIABLES (POST-COLLISION)
+# ==========================================
+
+def resolve_bounce(v_old, w_old, theta_impact, j1, j2):
+    """
+    Calculates the NEW velocities after an inelastic collision.
+    Objective:
+    ----------
+    To apply the impulse from the floor to the coin, converting linear momentum
+    into rotational momentum (or vice versa) and dissipating energy via 'gamma'.
+
+    Returns:
+    --------
+    v_new, w_new : Updated velocities.
+    """
+    # 1. Calculate lever arm 'y' (Horizontal dist from Contact to COM)
+    # We calculate alpha at t=0 relative to the impact instant
+    angle_phase = alpha(0, j1, j2, theta_impact, 0)
+    y_val = j2 * z_star * sin(angle_phase)
+
+    # 2. Velocity of contact point
+    v_contact_point = v_old + y_val * w_old
+
+    # 3. Impulse Factor
+    denom = I_moment + m * (y_val**2)
+    impulse_factor = -(1 + gamma) / denom
+
+    # 4. Apply Changes
+    delta_v = impulse_factor * I_moment * v_contact_point
+    delta_w = impulse_factor * m * y_val * v_contact_point
+
+    return v_old + delta_v, w_old + delta_w
+
+# ==========================================
+# 9. UPDATE VARIABLES (POST-COLLISION)
+# ==========================================
+
+def check_next_event(z_curr, v_curr, theta_curr, w_curr):
+    """
+    DECISION MAKER: What happens next?
+
+    Objective:
+    ----------
+    After a bounce, the coin is moving up. We need to know if:
+    A) It hits the floor again immediately (Chattering/Trapped/Antother corner).
+    B) It has enough energy to rise above z_star (Escape/Free Flight).
+
+    Returns:
+    --------
+    dict : Event type ("IMPACT" or "ESCAPE") and time to event.
+    """
+
+    impact_data = find_next_impact(0, z_curr, v_curr, theta_curr, w_curr, min_t=1e-9)
+
+    if impact_data is not None:
+        dt_impact = impact_data[2]
+        impact_details = (int(impact_data[0]), int(impact_data[1]))
+    else:
+        dt_impact = float('inf')
+        impact_details = None
+
+    # B. Check time to Escape (reach z_star)
+    # We look for direction=1 (Rising)
+    if z_curr >= z_star:
+        dt_escape = 0.0 # Already escaped
+    else:
+        dt_escape = falling_impact_study_time(z_curr, v_curr, direction=1)
+        if dt_escape is None: dt_escape = float('inf')
+
+    # C. Compare
+    if dt_impact < dt_escape:
+        return {"type": "IMPACT", "dt": dt_impact, "details": impact_details}
+    else:
+        return {"type": "ESCAPE", "dt": dt_escape, "details": None}
+
+
+# ==========================================
+# 10. WHAT HAPPENS NEXT?
+# ==========================================
+
+def check_next_event(z_curr, v_curr, theta_curr, w_curr):
+    """
+    DECISION MAKER: What happens next?
+
+    Objective:
+    ----------
+    After a bounce, the coin is moving up. We need to know if:
+    A) It hits the floor again immediately (Chattering/Trapped).
+    B) It has enough energy to rise above z_star (Escape/Free Flight).
+
+    Returns:
+    --------
+    dict : Event type ("IMPACT" or "ESCAPE") and time to event.
+    """
+
+    # A. Check time to next Impact
+    impact_data = find_next_impact(0, z_curr, v_curr, theta_curr, w_curr, min_t=1e-9)
+
+    if impact_data is not None:
+        dt_impact = impact_data[2]
+        impact_details = (int(impact_data[0]), int(impact_data[1]))
+    else:
+        dt_impact = float('inf')
+        impact_details = None
+
+    # B. Check time to Escape (reach z_star)
+    # We look for direction=1 (Rising)
+    if z_curr >= z_star:
+        dt_escape = 0.0 # Already escaped
+    else:
+        dt_escape = falling_impact_study_time(z_curr, v_curr, direction=1)
+        if dt_escape is None: dt_escape = float('inf')
+
+    # C. Compare
+    if dt_impact < dt_escape:
+        return {"type": "IMPACT", "dt": dt_impact, "details": impact_details}
+    else:
+        return {"type": "ESCAPE", "dt": dt_escape, "details": None}
+
+
+
+# ==========================================
+# 11. WHAT HAPPENS NEXT?
+# ==========================================
+def determine_outcome_by_corners(z_f, v_f, theta_f, w_f):
+    """
+    Determina el resultat mirant quines dues cantonades estan més a prop del terra.
+    """
+    corners = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+    heights = []
+
+    # 1. Calculem l'alçada final de cada cantonada
+    for (j1, j2) in corners:
+        # Usem la teva funció Z_j1j2 existent
+        h_corner = Z_j1j2(0, j1, j2, z_f, v_f, theta_f, w_f)
+        heights.append( ((j1, j2), h_corner) )
+
+    # 2. Ordenem de menor a major alçada
+    heights.sort(key=lambda x: x[1])
+
+    # Agafem les dues cantonades més baixes (les que toquen terra)
+    c1 = heights[0][0] # (j1_a, j2_a)
+    c2 = heights[1][0] # (j1_b, j2_b)
+
+    # 3. Comparem els índexs per saber com ha caigut
+    # c1[0] és j1, c1[1] és j2
+
+    # Si comparteixen el mateix j1 (mateix costat lateral) -> CANTÓ
+    if c1[0] == c2[0]:
+        return "CANTÓ (Edge)"
+
+    # Si comparteixen el mateix j2 (mateixa cara plana) -> CARA o CREU
+    elif c1[1] == c2[1]:
+        # Si j2 és positiu (1), és la cara de dalt (per exemple, Cara)
+        # Si j2 és negatiu (-1), és la cara de baix (per exemple, Creu)
+        if c1[1] > 0:
+            return "CARA (Heads)"
+        else:
+            return "CREU (Tails)"
+
+    else:
+        return "INDETERMINAT (Diagonal?)"
+
+def determine_outcome_by_angle(theta_final, theta_c):
+    # Normalitzar a [0, pi) perquè la moneda és simètrica (cara amunt = cara avall si no distingim)
+    # O millor: normalitzar a [0, 2pi) per distingir Cara vs Creu.
+
+    # Simplificació:
+    # 0 rad +/- (pi/2 - theta_c) -> CARA
+    # pi rad +/- (pi/2 - theta_c) -> CREU
+    # pi/2 rad +/- theta_c -> CANTÓ
+
+    # Normalitzem theta entre 0 i pi (mòdul pi)
+    # Això assumeix que la moneda és simètrica (cap i cua són plans)
+    angle = theta_final % np.pi
+
+    if (np.pi/2 - theta_c) < angle < (np.pi/2 + theta_c):
+        return "CANTÓ (Edge)"
+    else:
+        return "PLANES (Face = Heads or Tails, not Edge)" # Després pots mirar si és Cara o Creu segons si és < pi/2 o > pi/2
+'''
+# SIMULACIONS ################################################################################################################################################################
+# Simular fins la primera col·lissió (i veure que passa amb la 2a) ###########################################################################################################
+'''
+import numpy as np
+import scipy
+import matplotlib.pyplot as plt
+
+# Redefinir geometria per l'exemple (moneda gran)
+r = 0.011
+h = 0.002
+z_star = np.sqrt(r**2 + (h/2)**2)
+theta_c = np.arctan(h / (2 * r))
+m = 0.0075
+I_moment = (m / 4) * r**2 + (m / 12) * h**2
+
+# Condicions inicials
+z_0 = 0.7
+v_0 = 6.3
+theta_0 = 0
+w = 23.5
+t_total = 0
+
+print(f"--- Inici: z0={z_0}, v0={v_0} ---")
+
+# 1. Trobar quan z arriba a z_star baixant
+t_study = falling_impact_study_time(z_0, v_0, 0)
+
+if t_study is not None:
+    print(f"Arriba a z_star ({z_star:.4f}m) en t={t_study:.6f}s")
+    t_total += t_study
+
+    # 2. Actualitzar estat
+    z_curr, v_curr, theta_curr = update_state(z_0, v_0, theta_0, w, t_study)
+    print(f"Estat a z*: v={v_curr:.3f}, theta={theta_curr:.3f}")
+
+    # 3. Simular fins impacte
+    impacte = simulate_until_impact(z_curr, v_curr, theta_curr, w)
+
+    if impacte is None:
+        print("ERROR: No s'ha trobat impacte (revisa la física o tolerància).")
+    else:
+        # CORRECCIÓ 3 aplicada: Ara 'impacte' és una llista, podem usar índexs
+        j1 = impacte[0]
+        j2 = impacte[1]
+        t_recorregut = impacte[2]
+        t_total += t_recorregut
+        z_curr = impacte[3]
+        v_curr = impacte[4]
+        theta_curr = impacte[5]
+
+        print(f"IMPACTE DETECTAT!")
+        print(f"Cantonada: ({j1}, {j2})")
+        print(f"Temps total: {t_total:.6f}s")
+
+        # 4. Resoldre rebot
+        v_new, w_new = resolve_bounce(v_curr, w, theta_curr, j1, j2)
+        print(f"Post-rebot: v={v_new:.3f}, w={w_new:.3f}")
+
+        # 5. Següent event
+        next_ev = check_next_event(z_curr, v_new, theta_curr, w_new)
+        print(f"Següent event: {next_ev['type']} en {next_ev['dt']:.16f}s")
+
+else:
+    print("Error: No s'ha trobat solució per baixar a z_star.")
+'''
+# SIM UN LLANÇAMENT SENCER (FINS PARAR) #####################################################################################################################################
+'''
+# ==========================================
+# 1. DEFINIR GEOMETRIA DE LA MONEDA
+# ==========================================
+r = 0.011
+h = 0.002
+z_star = np.sqrt(r**2 + (h/2)**2)
+theta_c = np.arctan(h / (2 * r))
+m = 0.0075
+I_moment = (m / 4) * r**2 + (m / 12) * h**2
+
+# ==========================================
+# 2.CONDICIONS DEL LLANÇAMENT PARTICULAR
+# ==========================================
+z_0 = 1.7
+v_0 = 6.3
+theta_0 = 0
+w = 23.5
+
+# ==========================================
+# 3. SIMULACIÓ LLANÇAMENT COMPLET (AMB SUMA DE TEMPS TOTAL)
+# ==========================================
+# 1. Variables d'estat (Inicialització)
+z_curr, v_curr, theta_curr, w_curr = z_0, v_0, theta_0, w
+t_total = 0.0          # <--- TEMPS TOTAL
+bounce_count = 0       # <--- BOTS TOTALS
+max_bounces = 50       # <--- Per si ens dona algun bucle infinit (es pot treure o fer més gran)
+
+# 2. Energia mínima (quan baixa d'aquí, considerem que ja no bota)
+E_min = m * g * (z_star) # <--- Havia posat z_star on (h+1e-4), però això és per teoria, la manera de fer-ho per pràctica potser és aquesta no?
+# Mirar quant trigaria en caure en terra i veure com està la moneda en aquest punt.
+
+# 3. Mirar si el llançament és físicament possible
+# Calcular l'alçada de les 4 cantonades a t=0
+initial_corners_z = []
+corners = [(1, 1), (1, -1), (-1, 1), (-1, -1)]
+
+for j1, j2 in corners:
+    z_corner = Z_j1j2(0, j1, j2, z_0, v_0, theta_0, w)
+    initial_corners_z.append(z_corner)
+
+# Trobar el punt més baix
+min_z_initial = min(initial_corners_z)
+
+# Comprovar si travessa el terra
+if min_z_initial < 0:
+    print(f"ERROR CRÍTIC: El llançament no és físic!")
+    print(f"Motiu: Una part de la moneda comença sota terra (z_min = {min_z_initial:.4f} m).")
+    print("Acció: Augmenta l'alçada inicial (z_0).")
+    # Pots fer un 'break', 'sys.exit()', o posar 'simulating = False' per no començar
+    simulating = False
+else:
+    simulating = True
+    print(f"--- INICI LLANÇAMENT (z0={z_0:.2f}m, v0={v_0:.2f}m/s), v0={theta_0:.2f}rad), v0={w:.2f}rad/s) ---")
+
+# 4. Comença el bucle del llançament
+while simulating and bounce_count < max_bounces:
+
+    # ---------------------------------------------------
+    # PAS 1: DOS OPCIONS:
+    #   SI ESTEM ALT, SIMULEM EL MOVIMENT FINS QUE CAIEM A ALÇADA Z*
+    #   SI ESTEM BAIX (Z_CURR < Z*), ESTUDIEM QUE PASSA ABANS:
+    #       1. XOCA UNA CANTONADA
+    #       2. AGAFA ALTURA I FINALMENT BAIXA FINS QUE CAU A ALÇADA Z*
+    # ---------------------------------------------------
+    if z_curr > z_star + 1e-4:      # <-- si
+        t_fall = falling_impact_study_time(z_curr, v_curr, direction=0) # 0=Baixant
+
+        if t_fall:
+            z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, t_fall)
+            t_total += t_fall  # Sumem temps de caiguda lliure
+        else:
+            # Si no troba temps de caiguda i estem alts, alguna cosa falla a la física (o puja infinit)
+            print("Alerta: La moneda no baixa a z* (v molt alta?).")
+            break
+    else:
+      # Arribaré a z* abans de xocar?
+        next_ev = check_next_event(z_curr, v_curr, theta_curr, w_curr)
+
+        if next_ev['type'] == 'ESCAPE': #
+            dt = next_ev['dt']
+            z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, dt)
+            t_total += dt
+
+        #else:
+            # ja estic a alçada z* i amb xoc inminent (abans de pujar i finalment caure)
+            # no he de fer cap canvi perque el pas 2 ja s'encarrega d'això
+
+    # ---------------------------------------------------
+    # PAS 2: BUSCAR IMPACTE (Des de z* fins al terra)
+    # ---------------------------------------------------
+    impacte = simulate_until_impact(z_curr, v_curr, theta_curr, w_curr)
+
+    if impacte is None:
+        # AQUEST ÉS EL CANVI CLAU:
+        # Si no trobem impacte, assumim que la moneda ha entrat en rodament/terra
+        # i finalitzem la simulació correctament.
+        print(f"--> La moneda ha deixat de rebotar (Rodolament/Aturada).")
+        break
+
+    # Actualitzar variables pre-xoc amb el resultat de la simulació
+    j1, j2 = impacte[0], impacte[1]
+    t_recorregut = impacte[2]
+
+    # Actualitzem estat a l'instant del xoc
+    z_curr = impacte[3]
+    v_curr = impacte[4]
+    theta_curr = impacte[5]
+
+    t_total += t_recorregut # Sumem el temps d'aquest petit trajecte
+
+    bounce_count += 1
+    print(f"REBOT {bounce_count}: t_acumulat={t_total:.4f}s | v_impact={v_curr:.3f}")
+
+    # ---------------------------------------------------
+    # PAS 3: RESOLDRE EL REBOT (FÍSICA DE XOC)
+    # ---------------------------------------------------
+    v_curr, w_curr = resolve_bounce(v_curr, w_curr, theta_curr, j1, j2)
+
+    # Comprovar energia per parar (Criteri energètic)
+    E_total = 0.5*m*v_curr**2 + 0.5*I_moment*w_curr**2 + m*g*z_curr
+    if E_total < E_min:
+        print(f"--> Aterratge per falta d'energia (E={E_total:.5f}).")
+        break
+
+    # ---------------------------------------------------
+    # PAS 4: GESTIONAR EL POST-REBOT (Xoc ràpid o Fugida?)
+    # ---------------------------------------------------
+    # La moneda puja. Pot ser que impacti de seguida (chattering) o escapi amunt.
+
+    post_bounce_active = True
+    while post_bounce_active:
+        next_ev = check_next_event(z_curr, v_curr, theta_curr, w_curr)
+
+        if next_ev['type'] == 'ESCAPE':
+            # Si escapa, avancem fins a z* (pujada) i sortim al bucle principal (PAS 1)
+            dt = next_ev['dt']
+            z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, dt)
+            t_total += dt # Sumem temps de pujada
+            post_bounce_active = False # Tornem al bucle principal (on z > z*)
+
+        elif next_ev['type'] == 'IMPACT':
+            # Si impacta sense escapar (chattering ràpid), resolem el bucle internament
+            dt = next_ev['dt']
+
+            # Avancem fins a prop del nou impacte
+            z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, dt)
+            t_total += dt
+
+            # Afinem el xoc ràpid
+            impacte_rapid = simulate_until_impact(z_curr, v_curr, theta_curr, w_curr)
+            if impacte_rapid:
+                j1, j2 = impacte_rapid[0], impacte_rapid[1]
+                # Actualitzem al moment exacte del micro-xoc
+                t_total += impacte_rapid[2]
+                z_curr, v_curr, theta_curr = impacte_rapid[3], impacte_rapid[4], impacte_rapid[5]
+
+                # Nou rebot
+                v_curr, w_curr = resolve_bounce(v_curr, w_curr, theta_curr, j1, j2)
+                bounce_count += 1
+                print(f"REBOT {bounce_count} (ràpid): t_acumulat={t_total:.6f}s")
+
+                # Si l'energia ja es molt baixa, parem aquí mateix
+                E_tot = 0.5*m*v_curr**2 + 0.5*I_moment*w_curr**2
+                if E_tot < E_min:
+                    simulating = False
+                    post_bounce_active = False
+                    print("--> Aterratge ràpid (Energia esgotada en chattering).")
+            else:
+                # Si no troba el xoc ràpid que havia predit, assumim que roda
+                print("--> Fi del moviment (transició a rodament).")
+                simulating = False
+                post_bounce_active = False
+
+# ==========================================
+# RESULTATS FINALS
+# ==========================================
+print("\n" + "="*30)
+print("      RESUM DEL LLANÇAMENT      ")
+print("="*30)
+print(f"TEMPS TOTAL:    {t_total:.6f} s") # <--- AQUI TENS EL CONTADOR FINAL
+print(f"Rebots totals:  {bounce_count}")
+print(f"Estat Final:    z={z_curr:.4f}, theta={theta_curr:.4f} rad")
+resultat_final_1 = determine_outcome_by_corners(z_curr, v_curr, theta_curr, w_curr)
+resultat_final_2 = determine_outcome_by_angle(theta_curr, theta_c)
+print(f"RESULTAT per corners:       {resultat_final_1}")
+print(f"RESULTAT per angle:   {resultat_final_2}")
+#
+'''
+# Sim molts llançaments #####################################################################################################################################################
+# Funció sim 1 llançament ###################################################################################################################################################
+'''
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ==========================================
+# 1. FUNCIÓ D'UN SOL LLANÇAMENT
+# ==========================================
+# (Aquesta funció conté tota la lògica del teu script anterior)
+
+def simulate_single_toss(z_0, v_0, theta_0, w_0):
+
+    # Variables d'estat
+    curr_z, curr_v, curr_theta = z_0, v_0, theta_0
+    curr_w = w_0
+    t_total = 0.0
+    bounce_count = 0
+    max_bounces = 30
+
+    # Energia Mínima
+    E_min = m * g * z_star
+
+    simulating = True
+
+    while simulating and bounce_count < max_bounces:
+
+        # --- PAS 1: CAIGUDA DES DE DALT ---
+        if curr_z > z_star + 1e-4:
+            t_fall = falling_impact_study_time(curr_z, curr_v, direction=0)
+            if t_fall:
+                curr_z, curr_v, curr_theta = update_state(curr_z, curr_v, curr_theta, curr_w, t_fall)
+                t_total += t_fall
+            else:
+                # Error físic (puja infinit)
+                return "ERROR (Physics)", 0
+
+        # --- PAS 2: BUSCAR IMPACTE ---
+        impacte = simulate_until_impact(curr_z, curr_v, curr_theta, curr_w)
+
+        if impacte is None:
+            # S'ha aturat rodant
+            break
+
+        j1, j2 = impacte[0], impacte[1]
+        t_total += impacte[2]
+        curr_z, curr_v, curr_theta = impacte[3], impacte[4], impacte[5]
+
+        bounce_count += 1
+
+        # --- PAS 3: REBOT ---
+        curr_v, curr_w = resolve_bounce(curr_v, curr_w, curr_theta, j1, j2)
+
+        # Check Energia
+        E_tot = 0.5*m*curr_v**2 + 0.5*I_moment*curr_w**2 + m*g*curr_z
+        if E_tot < E_min:
+            break
+
+        # --- PAS 4: POST-REBOT (Fugida o Chattering) ---
+        post_bounce = True
+        while post_bounce:
+            next_ev = check_next_event(curr_z, curr_v, curr_theta, curr_w)
+
+            if next_ev['type'] == 'ESCAPE':
+                dt = next_ev['dt']
+                curr_z, curr_v, curr_theta = update_state(curr_z, curr_v, curr_theta, curr_w, dt)
+                t_total += dt
+                post_bounce = False # Tornem a dalt
+
+            elif next_ev['type'] == 'IMPACT':
+                # Chattering ràpid
+                dt = next_ev['dt']
+                curr_z, curr_v, curr_theta = update_state(curr_z, curr_v, curr_theta, curr_w, dt)
+                t_total += dt
+
+                # Micro-xoc
+                imp_rapid = simulate_until_impact(curr_z, curr_v, curr_theta, curr_w)
+                if imp_rapid:
+                    j1, j2 = imp_rapid[0], imp_rapid[1]
+                    t_total += imp_rapid[2]
+                    curr_z, curr_v, curr_theta = imp_rapid[3], imp_rapid[4], imp_rapid[5]
+
+                    curr_v, curr_w = resolve_bounce(curr_v, curr_w, curr_theta, j1, j2)
+                    bounce_count += 1
+
+                    # Check energia chattering
+                    E_micro = 0.5*m*curr_v**2 + 0.5*I_moment*curr_w**2
+                    if E_micro < E_min:
+                        simulating = False
+                        post_bounce = False
+                else:
+                    simulating = False
+                    post_bounce = False
+
+    # --- FINAL: DETERMINAR RESULTAT ---
+    resultat = determine_final_outcome(curr_z, curr_v, curr_theta, curr_w)
+    return resultat, t_total
+
+# ==========================================
+# 2. GENERADOR ALEATORI
+# ==========================================
+
+def get_random_toss_params():
+    """ Genera condicions inicials aleatòries però realistes """
+    z_val = np.random.uniform(1.0, 1.5)      # Altura mà (1m - 1.5m)
+    v_val = np.random.uniform(2.0, 5.0)      # Llançament cap amunt (2-5 m/s)
+    # NOTA: v positiva vol dir cap amunt. La nostra funció 'v' ja resta g*t.
+
+    th_val = np.random.uniform(0, 2*np.pi)   # Angle qualsevol
+    w_val = np.random.uniform(10.0, 40.0)    # Rotació (10-40 rad/s)
+
+    # Randomitzar sentit de gir
+    if np.random.rand() > 0.5: w_val *= -1
+
+    return z_val, v_val, th_val, w_val
+'''
+# Simulació ################################################################################################################################################################
+'''
+# ==========================================
+# 3. BUCLE MONTE CARLO
+# ==========================================
+
+N_SIMS = 1000 # Nombre de llançaments
+results = {"CARA (Heads)": 0, "CREU (Tails)": 0, "CANTÓ (Edge)": 0, "ERROR": 0, "Unknown": 0}
+times = []
+
+print(f"Iniciant {N_SIMS} simulacions Monte Carlo...")
+
+for i in range(N_SIMS):
+    # 1. Generar condicions (Noms diferents per no matxucar funcions)
+    z_sim, v_sim, th_sim, w_sim = get_random_toss_params()
+
+    # 2. Simular
+    res_str, t_dur = simulate_single_toss(z_sim, v_sim, th_sim, w_sim)
+
+    # 3. Guardar dades
+    if "CARA" in res_str: key = "CARA (Heads)"
+    elif "CREU" in res_str: key = "CREU (Tails)"
+    elif "CANTÓ" in res_str: key = "CANTÓ (Edge)"
+    else: key = "Unknown"
+
+    results[key] += 1
+    times.append(t_dur)
+
+    if (i+1) % 10 == 0:
+        print(f"  Simulació {i+1}/{N_SIMS} completada...")
+
+# ==========================================
+# 4. RESULTATS ESTADÍSTICS
+# ==========================================
+
+print("\n" + "="*40)
+print(f"RESULTATS FINALS ({N_SIMS} Llançaments)")
+print("="*40)
+print(f"CARA:   {results['CARA (Heads)']} ({results['CARA (Heads)']/N_SIMS*100:.1f}%)")
+print(f"CREU:   {results['CREU (Tails)']} ({results['CREU (Tails)']/N_SIMS*100:.1f}%)")
+print(f"CANTÓ:  {results['CANTÓ (Edge)']} ({results['CANTÓ (Edge)']/N_SIMS*100:.1f}%)")
+print(f"Errors: {results['ERROR'] + results['Unknown']}")
+
+print(f"\nTemps mig de vol: {np.mean(times):.4f} s")
+
+# Gràfic de barres
+plt.bar(results.keys(), results.values(), color=['blue', 'green', 'red', 'gray', 'gray'])
+plt.title(f"Distribució de Resultats (N={N_SIMS})")
+plt.ylabel("Freqüència")
+plt.show()
