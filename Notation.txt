@@ -24,6 +24,7 @@ Unbiased, assumptions
 * the coin is an incompressible cylinder
 * g = 9.8
 * w is constant
-* The coin is dropped from sufficiently high that it has time to rotate enough times for the corner at which it impacts to be considered random
-
+* We assume that the coin bounces enough times that the states in the phase space are independent of the initial conditions - equiprobability of prior states and states in phase space
+* Air and ground friction negligible
 * In the simulation, if the coin bounces more than 50 times, we assume that it is stuck in an infinite loop and will bounce forever. So in this scenario we end the simulation at whatever position the coin is in at bounce 50
+
