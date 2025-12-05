@@ -1,0 +1,34 @@
+﻿Notation and Assumptions
+
+
+Unbiased, notation
+
+
+* g gravitational acceleration 
+* r radius of coin (assume r = 0.011 in code)
+* h width of coin (assume h = 0.002 in code)
+* m mass of coin (assume m = 0.005 in code)
+* gamma coefficient of restitution (assume gamma = 0.5 in code)
+
+
+* z_star = np.sqrt(r**2 + (h/2)**2) distance from cm to a corner
+* theta_c = np.arctan(h / (2 * r)) critical angle, angle of length of coin measured clockwise from z axis
+* I_moment = (m / 4) * r**2 + (m / 12) * h**2 moment of inertia
+* E_min = m * g * z_star
+
+
+
+
+* z_0 initial height of cm
+* v_0 initial velocity of coin
+* theta_0 initial angle of the coin with z axis
+* w angular velocity
+* j1, j2 to indicate the impacting corner, = 1 or -1
+
+
+Unbiased, assumptions
+* the coin is an incompressible cylinder
+* g = 9.8
+* w is constant
+* The coin is dropped from sufficiently high that it has time to rotate enough times for the corner at which it impacts to be considered random
+* In the simulation, if the coin bounces more than 50 times, we assume that it is stuck in an infinite loop and will bounce forever. So in this scenario we end the simulation at whatever position the coin is in at bounce 50
