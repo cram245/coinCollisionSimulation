@@ -6,6 +6,11 @@ import scipy
 import matplotlib.pyplot as plt
 import math
 
+
+def determine_final_outcome(curr_z, curr_v, curr_theta, curr_w):
+    return "CARA"
+
+
 # ==========================================
 # 1. GLOBAL CONFIGURATION & CONSTANTS
 # ==========================================
