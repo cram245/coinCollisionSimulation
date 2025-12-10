@@ -1,0 +1,140 @@
+z(t, z_0, v_0)
+"""
+Calculates the vertical position of the Center of Mass (COM).
+Equation: z(t) = z0 + v0*t - 0.5*g*t^2
+"""
+
+v_vel(t, v_0)
+"""
+Calculates the vertical velocity of the COM.
+Equation: v(t) = v0 - g*t
+NOTE: Negative sign because 'g' is defined as positive 9.8.
+"""
+
+norm_angle(angle):    
+
+
+theta_ang(t, theta_0, w):
+    """
+    Calculates the angular orientation of the coin.
+    Equation: theta(t) = theta0 + w*t
+    """
+
+alpha(t, j1, j2, theta_0, w):
+    """
+    Calculates the instantaneous phase angle for a specific corner.
+
+    Parameters:
+    -----------
+    j1 : int (+1 or -1) -> Horizontal selector (Right/Left)
+    j2 : int (+1 or -1) -> Vertical selector (Top/Bottom)
+
+    Returns:
+    --------
+    float : The angle used inside the cosine/sine functions for position.
+    """   
+
+Z_j1j2(t, j1, j2, z_0, v_0, theta_0, w):
+    """
+    Calculates the exact vertical height (Z) of a specific corner.
+    Logic: Height of COM + Vertical projection of the corner radius.
+    """
+
+update_state(z_curr, v_curr, theta_curr, w, dt):
+    """ Helper to advance physics state by dt """
+
+
+falling_impact_study_time(z_0, v_0, direction):
+    """
+    ANALYTICAL SOLVER for Center of Mass height.
+    Finds the time 't' when the COM reaches the critical height 'z_star'.
+
+    Objective:
+    ----------
+    To determine if the coin has enough energy to reach the height where it is
+    safe from hitting the ground (z_star), or if it is trapped below.
+
+    Parameters:
+    -----------
+    direction : int
+        1 -> Search for time when passing z_star while going UP (Escape).
+        0 -> Search for time when passing z_star while going DOWN (Falling).
+
+    Returns:
+    --------
+    float or None : The smallest positive time 't', or None if unreachable.
+    """
+
+solve_collision_time(j1, j2, t_study, z_0, v_0, theta_0, w, min_t=-1e-9):
+    """
+    NUMERICAL SOLVER (Taylor Expansion) for Corner Impact.
+    Approximates the time 'dt' until a specific corner hits Z=0.
+
+    Objective:
+    ----------
+    Because Z_j1j2(t) involves cos(t) and t^2, it cannot be solved analytically.
+    We use a 2nd-order Taylor expansion around t=0 (current state) to approximate
+    the trajectory as a parabola locally and find the root.
+
+    Returns:
+    --------
+    float or None : The time 'dt' relative to t_study, or None.
+    """
+
+find_next_impact(t_study, z_0, v_0, theta_0, w, min_t=-1e-9):
+    """
+    MANAGER for Impact Detection.
+    Checks all 4 corners to see which one hits the floor first.
+
+    Returns:
+    --------
+    np.array : [j1, j2, absolute_time]
+    """
+
+update_state(z_curr, v_curr, theta_curr, w, dt):
+    """ Helper to advance physics state by dt """
+
+
+simulate_until_impact(z_ini, v_ini, theta_ini, w_ini):
+    """
+    ITERATIVE LOOP to find exact impact time.
+
+    Objective:
+    ----------
+    Taylor expansion is only accurate locally. This function advances the simulation
+    step-by-step, recalculating the Taylor approximation as it gets closer to the floor,
+    until the error is negligible (< 0.1 microseconds).
+    """
+
+resolve_bounce(v_old, w_old, theta_impact, j1, j2):
+    """
+    Calcula les noves velocitats després del xoc.
+    ADAPTACIÓ: Utilitza internament la lògica i fórmules fetes a classe.
+    """
+
+check_next_event(z_curr, v_curr, theta_curr, w_curr):
+    """
+    DECISION MAKER: What happens next?
+
+    Objective:
+    ----------
+    After a bounce, the coin is moving up. We need to know if:
+    A) It hits the floor again immediately (Chattering/Trapped).
+    B) It has enough energy to rise above z_star (Escape/Free Flight).
+
+    Returns:
+    --------
+    dict : Event type ("IMPACT" or "ESCAPE") and time to event.
+    """
+
+
+determine_outcome_by_angle(theta_final, theta_c):
+    """
+    Determina el resultat normalitzant l'angle a [-pi, pi].
+
+    GEOMETRIA DEL MODEL (basat en el teu cosinus):
+    - 0 rad i +/-PI rad  -> Cosinus Màxim -> DE PEU (Cantó)
+    - +/- PI/2 rad       -> Cosinus Mínim -> PLANA (Cara/Creu)
+    """
+
+
