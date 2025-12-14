@@ -32,19 +32,23 @@ def get_coin_vertices(POS_CM, theta):
     return world_verts
 
 
-def simulateFallUntil(z_0, v_0, theta_0, w, t_start, t_end, frames_data, hasCollisionAtEnd):
-    time_points = np.arange(0, t_end, dt)
+def simulateFallUntil(z_0, v_0, theta_0, w, t_start, t_end, frames_data, currSimInter, hasCollisionAtEnd):
+    time_points = np.arange(0, t_end - dt, dt) # l'ultim temps te major precisio que 1e-3 aixi que el tractem per separat
 
-    if len(time_points) == 0:
+    if t_end < 1e-5:
         return
-
-    if hasCollisionAtEnd:
-        if time_points[-1] != t_end:
-            time_points = np.append(time_points, t_end) # asi tendremos el intervalo de tiempo en que choca entre nuestros time_points
     
+    print()
+    print(f"Abans de començar a simular el interval {currSimInter}, z_cm = {z_0}, theta = {theta_0}")
+    
+    #if hasCollisionAtEnd:
+        #if time_points[-1] != t_end:
+            #time_points = np.append(time_points, t_end) # asi tendremos el intervalo de tiempo en que choca entre nuestros time_points
+    
+     
     for t in time_points:
-        z_cm = z_0 + v_0 * t - 0.5 * g * t**2
-        theta = theta_0 + w * t
+        z_cm = z(t, z_0, v_0)
+        theta = theta_ang(t, theta_0, w)
     
         pos_vertices = get_coin_vertices(np.array([X_CM, z_cm]), theta)
 
@@ -53,13 +57,36 @@ def simulateFallUntil(z_0, v_0, theta_0, w, t_start, t_end, frames_data, hasColl
             'pos_vertices': pos_vertices,
             'z_cm': z_cm,
             'theta': theta,
-            'X_CM': x_0
+            'X_CM': x_0,
+            'simInter': currSimInter
         }
 
         frames_data.append(frame)
 
+    z_cm = z(t_end, z_0, v_0)
+    theta = theta_ang(t_end, theta_0, w)
+    pos_vertices = get_coin_vertices(np.array([X_CM, z_cm]), theta)
+
+    frame = {
+        't': t_end + t_start,
+        'pos_vertices': pos_vertices,
+        'z_cm': z_cm,
+        'theta': theta,
+        'X_CM': x_0,
+        'simInter': currSimInter
+    }
+
+    frames_data.append(frame)
 
 
+    # ara en fem una extra pero nomes per l'ultim temps
+    
+    print(f"Al acabar el interval de simulacio {currSimInter}, z_cm = {z_cm}, theta = {theta}, t_final = {t_start + t_end}")
+    
+    
+
+
+currSimInter = 0
 z_curr, v_curr, theta_curr, w_curr = z_0, v_0, theta_0, w
 t_total = 0
 bounce_count = 0
@@ -82,8 +109,13 @@ while simulating and bounce_count < max_bounces and t_total < T_max:
         t_fall = falling_impact_study_time(z_curr, v_curr, direction)
     
         if t_fall:
-            simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, t_fall, frames_data, False)
-            z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w, t_fall)
+            currSimInter += 1
+            simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, t_fall, frames_data, currSimInter, False)
+            
+            
+            z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, t_fall)
+            print(f"Segons el update state despres de el interval {currSimInter}, z_cm = {z_curr}, theta = {theta_curr}")
+
             t_total += t_fall
         else:
             print("ERROR! On no, alguna cosa ha fallat!")
@@ -99,8 +131,10 @@ while simulating and bounce_count < max_bounces and t_total < T_max:
             
             t_fall = falling_impact_study_time(z_curr, v_curr, direction=0)
             if t_fall:
-                simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, t_fall, frames_data, False)
-                z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w, t_fall)
+                currSimInter += 1
+                simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, t_fall, frames_data, currSimInter, False)
+                z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, t_fall)
+                print(f"Segons el update state despres de el interval {currSimInter}, z_cm = {z_curr}, theta = {theta_curr}")
                 t_total += t_fall
             else:
                 print("Error, the coin doesn't reach Z* never (ERROR)")
@@ -108,14 +142,15 @@ while simulating and bounce_count < max_bounces and t_total < T_max:
                 simulating = False
                 break
 
-
+    
     impacte = simulate_until_impact(z_curr, v_curr, theta_curr, w)
     if impacte is None:
         z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, 0.01)
+        print("No impact!")
         continue
     
-    print(t_total)
-    simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, impacte[2], frames_data, True)
+    currSimInter += 1
+    simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, impacte[2], frames_data, currSimInter, True)
     
     j1, j2 = impacte[0], impacte[1]
     t_recorregut = impacte[2]
@@ -125,6 +160,7 @@ while simulating and bounce_count < max_bounces and t_total < T_max:
 
     t_total += t_recorregut
     bounce_count += 1
+    print(f"Segons el update state despres de el interval {currSimInter}, z_cm = {z_curr}, theta = {theta_curr}")
     print("Colision al segundo: ", t_total)
 
     v_curr, w_curr = resolve_bounce(v_curr, w_curr, theta_curr, j1, j2)
@@ -202,7 +238,12 @@ while simulating and bounce_count < max_bounces and t_total < T_max:
             # The coin is going to escape before colliding
             print("The coin will escape to a height > Z*")
             dt2 = next_ev['dt']
+
+            currSimInter += 1
+            simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, dt2+1e-5, frames_data, currSimInter, False)
             z_curr, v_curr, theta_curr = update_state(z_curr, v_curr, theta_curr, w_curr, dt2+1e-5)
+            print(f"Segons el update state despres de el interval {currSimInter}, z_cm = {z_curr}, theta = {theta_curr}")
+            t_total += dt2/2 + 1e-5
             continue
 
     if sliding:
@@ -228,7 +269,8 @@ while simulating and bounce_count < max_bounces and t_total < T_max:
             dt_slide = 0.0
 
         print("Time spent sliding: ", dt_slide)
-        simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, dt_slide, frames_data, False)
+        currSimInter += 1
+        simulateFallUntil(z_curr, v_curr, theta_curr, w_curr, t_total, dt_slide, frames_data, currSimInter, False)
 
         # 3. ACTUALITZAR L'ESTAT PRINCIPAL
         # Això és el que faltava: traspassar els valors nous a les variables del bucle
@@ -245,7 +287,7 @@ while simulating and bounce_count < max_bounces and t_total < T_max:
         #print(f"BOUNCE {bounce_count}: v_impact={v_curr:.6f} | w_impact={w_curr:.6f}")
         #print(f"   [SLIDING END] Theta: {theta_curr:.2f}")
     
-    print(t_total)
+    print("En acabar bucle aquest es el temps total: ", t_total)
 
 
 

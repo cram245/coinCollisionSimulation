@@ -1,8 +1,8 @@
 import numpy as np
 
 g = 9.8
-dt = 0.05
-T_max = 6
+dt = 0.01
+T_max = 2
 max_bounces = 50
 
 v_0 = 6.3
