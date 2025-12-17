@@ -84,7 +84,8 @@ def generateFigure(frames_data):
                     {
                         "args": [[f"frame_{i}"], {"frame": {"duration": dt*1000, "redraw": True}, "mode": "immediate"}],
                         #"label": "IMPACTO" if np.isclose(frame['t'], abs_time) else f"{frame['t']:.2f} s",
-                        "label": f"simInter {frame['simInter']} {frame['t']:.2f}",
+                        #"label": f"simInter {frame['simInter']} {frame['t']:.2f}",
+                        "label": f"{frame['t']:.2f} s",
                         "method": "animate"
                     } for i, frame in enumerate(frames_data)
                 ],
