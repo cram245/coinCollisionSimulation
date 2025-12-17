@@ -49,6 +49,10 @@ def simulateFallUntil(z_0, v_0, theta_0, w, t_start, t_end, frames_data, currSim
     
      
     for t in time_points:
+
+        if t_start + t > T_max:
+            return
+            
         z_cm = z(t, z_0, v_0)
         theta = theta_ang(t, theta_0, w)
     
