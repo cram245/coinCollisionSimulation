@@ -1,0 +1,48 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+\title{Biased Coin Toss}
+\author{authors}
+\date{January 2026}
+
+\begin{document}
+
+\maketitle
+
+\section*{The Critical Angle}
+We define the critical angle as the angle between the line down the centre of the coin and the z-axis when the semidiagonal of the coin is parallel to the z-axis. This is when the centre of mass of the coin is highest, and so when the coin is in between two states i.e: the coin could land on either heads or edge, or edge or tails.\\
+
+We can calculate the critical angle using:\\
+
+$\theta_c=arctan(\frac{h}{2r})$.\\
+
+We then use this to find an equation for the height of the centre of mass at any one point:\\
+
+$z_{min}(\theta)=z^*cos(\left|\theta\right|-\theta_c})$\\
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.5\linewidth]{Critical angle and height of c.m. of the coin.png}
+    \caption{Critical angle and height of c.m. of the coin}
+    \label{fig:placeholder}
+\end{figure}\\
+
+\section*{Critical Energy}
+In the system, the total energy ($E$) of the coin at any point can be defined as the sum of the kinetic energy ($T$) and the potential energy ($U$). So we can write:\\
+
+$E = T + U$\\
+
+with\\
+
+$T = \frac{mv^2}{2}+\frac{I\omega^2}{2}$ ~~and~~ $U = mgz_{min}$\\
+
+where $g$ is the gravitational constant, $m$ is the mass of the coin, $v$ is the scalar velocity of the coin, $\omega$ is its angular velocity, and $I$ is the moment of inertia of the coin about the axis through which it is rotating.\\
+
+The collisions of the coin are not perfectly elastic, so the coin loses energy after each collision. Because of this, we can define the critical energy ($E_c$) as the threshold energy after which the coin no longer has enough energy to rise up to the critical angle and change state.\\
+Since the critical energy is the energy of the coin at the highest point of the c.m., we can say that:\\
+
+$E_c=mgz^*$\\
+
+\section*{The Critical Collision}
+
+\end{document}
