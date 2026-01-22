@@ -10,7 +10,8 @@
 \maketitle
 
 \section*{The Critical Angle}
-We define the critical angle as the angle between the line down the centre of the coin and the z-axis when the semidiagonal of the coin is parallel to the z-axis. This is when the centre of mass of the coin is highest, and so when the coin is in between two states i.e: the coin could land on either heads or edge, or edge or tails.\\
+
+We define the critical angle as the angle between the line down the height of the coin and the z-axis when the semidiagonal of the coin is parallel to the z-axis. This is when the centre of mass of the coin is highest, and when the coin is in between two states i.e: the coin could land on either heads or edge, or edge or tails.\\
 
 We can calculate the critical angle using:\\
 
@@ -18,17 +19,17 @@ $\theta_c=arctan(\frac{h}{2r})$.\\
 
 We then use this to find an equation for the height of the centre of mass at any one point:\\
 
-$z_{min}(\theta)=z^*cos(\left|\theta\right|-\theta_c})$\\
+$z_{min}(\theta)=z^*cos(\left|\theta\right|-\theta_c)$\\
 
 \begin{figure}[h!]
     \centering
     \includegraphics[width=0.5\linewidth]{Critical angle and height of c.m. of the coin.png}
     \caption{Critical angle and height of c.m. of the coin}
     \label{fig:placeholder}
-\end{figure}\\
+\end{figure}
 
 \section*{Critical Energy}
-In the system, the total energy ($E$) of the coin at any point can be defined as the sum of the kinetic energy ($T$) and the potential energy ($U$). So we can write:\\
+In the system, the total energy ($E$) of the coin at any point can be defined as the sum of the kinetic energy ($T$) and the potential energy ($U$). We write:\\
 
 $E = T + U$\\
 
@@ -38,11 +39,56 @@ $T = \frac{mv^2}{2}+\frac{I\omega^2}{2}$ ~~and~~ $U = mgz_{min}$\\
 
 where $g$ is the gravitational constant, $m$ is the mass of the coin, $v$ is the scalar velocity of the coin, $\omega$ is its angular velocity, and $I$ is the moment of inertia of the coin about the axis through which it is rotating.\\
 
-The collisions of the coin are not perfectly elastic, so the coin loses energy after each collision. Because of this, we can define the critical energy ($E_c$) as the threshold energy after which the coin no longer has enough energy to rise up to the critical angle and change state.\\
-Since the critical energy is the energy of the coin at the highest point of the c.m., we can say that:\\
+The collisions of the coin are not perfectly elastic, so the coin loses energy after each collision. Because of this, we can define the critical energy ($E_c$) as the threshold energy after which the coin no longer has enough energy to rise up to the critical angle, and change state.\\
+Since the critical energy is the energy of the coin when the c.m. is at its highest point, we can say that:\\
 
 $E_c=mgz^*$\\
 
 \section*{The Critical Collision}
+We define the critical collision to be the collision in which the energy loss of the coin, $\Delta E$ means that it goes below the critical energy and can no longer change state. 
+
+To derive $\Delta E$ we use the following equations:\\
+
+- The characteristic equation of a partially inelastic collision $u''=-\gamma u'$, where $u'$ and $u''$ are the vertical velocity of the colliding corner before and after the collision respectively, and $\gamma$ is the coefficient of restitution between the coin and the surface.\\
+
+- An equation for vertical velocity which takes into account angular velocity $u=v+y(\theta)\omega$, where $u$ is the vertical velocity of the coin's colliding corner, $v$ is the vertical velocity of the centre of mass, and y($\theta$) is its horizontal position.\\
+
+- An equation to ensure conservation of angular momentum\\ $I\Delta \omega =my\Delta v$ , where $\Delta\omega$ and $\Delta v$ are the changes in angular and linear velocity respectively.\\
+
+Combining these, we can derive equations for $\Delta v$ and $\Delta\omega$ which only take in information from before the collision, and we can then combine these to calculate the loss of energy during the inelastic collision:\\
+
+$\Delta v=-(1+\gamma)\frac{I}{I+my^2}(v'+y\omega')$\\
+
+$\Delta\omega=-(1+\gamma)\frac{my}{I+my^2}(v'+y\omega')$\\
+
+$\Delta E=-\frac{1-\gamma^2}{2}\frac{mI}{I+my^2}(v'+y\omega')^2$\\
+
+\begin{figure}[h!]
+    \centering
+    \includegraphics[width=0.75\linewidth]{fig2.png}
+    \caption{Velocities before and after collision with the surface}
+    \label{fig:placeholder}
+\end{figure}
+
+\section*{Phase Space Density of Prior States}
+Now to find the probability of the coin landing on the edge, we need to first find the density of prior states $\rho(\theta)$ for any outcome of the coin toss.\\
+
+As mentioned before, before the critical collision, the coin has more energy than the critical energy, $E'(\theta,v,\omega)\geq E_c$ and after the critical collision the coin has less than the critical energy $E''(\theta,v,\omega)=E'+\Delta E<E_c$. It can also be noted that before the critical collision, we must have $u'<0$ for the vertical velocity of the colliding corner.\\
+
+Applying our equations to the first inequality, we get the elliptic surface:\\
+$[\frac{1}{2g(z^*-z_{min})}]v^2+[\frac{I}{2mg(z^*-z_{min})}]\omega^2\geq 1$\\
+
+And the second inequality gives the tilted ellipse:\\
+$[\frac{I\gamma^2+my^2}{2g(I+my^2)(z^*-z_{min})}]v^2+[\frac{Iy^2\gamma^2+I^2/m}{2g(I+my^2)(z^*-z_{min})}]\omega^2+[\frac{Iy(1-\gamma^2)}{-g(I+my^2)(z^*-z_{min})}]v\omega<1$\\
+
+From the third inequality, we get that $v+y\omega<0$.\\
+
+To find $\rho(\theta)$, we must use the difference between the areas of the first and second ellipse, $S_1$ and $S_2$, then calculate $\rho(\theta)=\frac{mI}{h^2}\frac{S_1+S_2}{2}$. The factor $mI/h^2$ is included to normalize the phase space.\\
+(For the calculation, we use that for an ellipse $AX^2+BY^2+CXY=1$, we can calculate the area using $S=2\pi/\sqrt{4AB-C^2}$.)\\
+
+After evaluating all of this we obtain a density function for prior states:\\
+
+$\rho(\theta)=\frac{\pi m^{3/2}g\sqrt{I}}{h^2}\frac{1-\gamma}{\gamma}[wz^*-z_{min}(\theta)]$
+
 
 \end{document}
