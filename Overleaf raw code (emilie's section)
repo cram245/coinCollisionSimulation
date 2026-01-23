@@ -9,25 +9,6 @@
 
 \maketitle
 
-\section*{The Critical Angle}
-
-We define the critical angle as the angle between the line down the height of the coin and the z-axis when the semidiagonal of the coin is parallel to the z-axis. This is when the centre of mass of the coin is highest, and when the coin is in between two states i.e: the coin could land on either heads or edge, or edge or tails.\\
-
-We can calculate the critical angle using:\\
-
-$\theta_c=arctan(\frac{h}{2r})$.\\
-
-We then use this to find an equation for the height of the centre of mass at any one point:\\
-
-$z_{min}(\theta)=z^*cos(\left|\theta\right|-\theta_c)$\\
-
-\begin{figure}[h!]
-    \centering
-    \includegraphics[width=0.5\linewidth]{Critical angle and height of c.m. of the coin.png}
-    \caption{Critical angle and height of c.m. of the coin}
-    \label{fig:placeholder}
-\end{figure}
-
 \section*{Critical Energy}
 In the system, the total energy ($E$) of the coin at any point can be defined as the sum of the kinetic energy ($T$) and the potential energy ($U$). We write:\\
 
@@ -40,9 +21,16 @@ $T = \frac{mv^2}{2}+\frac{I\omega^2}{2}$ ~~and~~ $U = mgz_{min}$\\
 where $g$ is the gravitational constant, $m$ is the mass of the coin, $v$ is the scalar velocity of the coin, $\omega$ is its angular velocity, and $I$ is the moment of inertia of the coin about the axis through which it is rotating.\\
 
 The collisions of the coin are not perfectly elastic, so the coin loses energy after each collision. Because of this, we can define the critical energy ($E_c$) as the threshold energy after which the coin no longer has enough energy to rise up to the critical angle, and change state.\\
-Since the critical energy is the energy of the coin when the c.m. is at its highest point, we can say that:\\
+
+For the \textbf{fair coin}, since the critical energy is the energy of the coin when the c.m. is at its highest point, we can say that:\\
 
 $E_c=mgz^*$\\
+
+For a \textbf{biased coin}, since one critical angle is larger than the other, (say $|\theta_{c1}|>|\theta_{c2}|$) it will take more energy to tip over $\theta_{c1}$ than $\theta_{c2}$. We can  calculate the two respective critical energies by using $z^*_1$ and $z^*_2$ as follows:\\
+
+$E_{c1}=mgz^*_{1}$\\
+
+$E_{c2}=mgz^*_{2}$\\
 
 \section*{The Critical Collision}
 We define the critical collision to be the collision in which the energy loss of the coin, $\Delta E$ means that it goes below the critical energy and can no longer change state. 
@@ -88,7 +76,7 @@ To find $\rho(\theta)$, we must use the difference between the areas of the firs
 
 After evaluating all of this we obtain a density function for prior states:\\
 
-$\rho(\theta)=\frac{\pi m^{3/2}g\sqrt{I}}{h^2}\frac{1-\gamma}{\gamma}[wz^*-z_{min}(\theta)]$
+$\rho(\theta)=\frac{\pi m^{3/2}g\sqrt{I}}{h^2}\frac{1-\gamma}{\gamma}[z^*-z_{min}(\theta)]$
 
 
 \end{document}
